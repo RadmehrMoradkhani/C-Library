@@ -1,16 +1,14 @@
 /**
  * @file debounce.h
  * @author Radmehr
- * @brief Optimized, hardware-independent, multi-instance debounce library.
- * @version 1.0
+ * @brief Hardware-independent, multi-instance software debounce library (v1.1)
+ * @version 1.1
  * @date 2025-10-07
  *
  * @details
- * This module provides a simple and efficient software debounce mechanism
- * that can handle multiple independent digital signals.
- * Each Debounce instance contains its own timing reference function
- * (provided by the user) to define how long a signal must remain stable
- * before it is accepted as valid.
+ * This version improves startup behavior, adds safe fallback for null time references,
+ * and ensures clean timing control separation between the debounce logic
+ * and user-defined timing mechanisms.
  */
 
 #ifndef DEBOUNCE_H_
@@ -24,18 +22,17 @@ extern "C" {
 
 /**
  * @struct Debounce
- * @brief Holds the state and timing reference for one debounced signal.
+ * @brief Represents one independent debounced signal instance.
  *
  * @var Debounce::prev_input
- *      Last raw input value (0 or 1).
+ *      Last observed raw input (0 or 1).
  *
  * @var Debounce::stable_output
- *      Last confirmed stable (debounced) output.
+ *      Last confirmed stable (debounced) output value.
  *
  * @var Debounce::time_ref
  *      Pointer to the user-defined timing function.
- *      The function should return 0 while the signal is unstable,
- *      and 1 once the configured offset/stability time has elapsed.
+ *      Returns 0 while waiting and 1 when the configured offset time has elapsed.
  */
 typedef struct {
     uint8_t prev_input;
@@ -44,29 +41,25 @@ typedef struct {
 } Debounce;
 
 /**
- * @brief Initializes a Debounce instance.
+ * @brief Initializes a Debounce instance and synchronizes it with the initial input.
  *
- * @param d Pointer to the Debounce instance.
- * @param time_ref Pointer to a user-defined timing function.
- *                 Can be NULL if not assigned yet.
- *
- * @note
- * This function must be called once before using debounce_update().
+ * @param d Pointer to the Debounce structure.
+ * @param time_ref Pointer to the user's time reference function.
+ * @param initial_input The current raw input signal (0 or 1) for synchronization.
  */
-void debounce_init(Debounce *d, uint8_t (*time_ref)(void));
+void debounce_init(Debounce *d, uint8_t (*time_ref)(void), uint8_t initial_input);
 
 /**
- * @brief Processes a single debounce step for the given input.
+ * @brief Processes a single debounce step for a digital input.
  *
  * @param d Pointer to the Debounce instance.
- * @param input Raw digital input (0 or 1).
- * @return uint8_t The debounced (stable) output.
+ * @param input Raw digital signal (0 or 1).
+ * @return uint8_t Debounced (stable) signal.
  *
  * @details
- * - If the input changes, it stores the new value but waits until
- *   the timing function indicates stability.
- * - Once the time_ref() function returns 1, the new input is accepted
- *   as a stable output.
+ * - If the input changes, the module starts waiting for the stable period.
+ * - The stable period is defined by the user's time_ref() function.
+ * - If no time_ref() is provided (NULL), changes are accepted immediately.
  */
 uint8_t debounce_update(Debounce *d, uint8_t input);
 
